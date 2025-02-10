@@ -1,156 +1,116 @@
-import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-const scene = new THREE.Scene();
+import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import gsap from 'gsap'
+import * as dat from 'dat.gui'
 
-const ambientLight = new THREE.AmbientLight("white", 1);
-scene.add(ambientLight);
-
-const dirLight = new THREE.DirectionalLight("white", 2);
-dirLight.position.set(3, 3, 3);
-dirLight.castShadow = true;
-scene.add(dirLight);
-
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  100
-);
-
-camera.position.set(0, 5, 10);
-camera.rotation.x = 6;
-
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-//Фигуры
-
-const road = new THREE.Mesh(
-  new THREE.PlaneGeometry(30, 20),
-  new THREE.MeshStandardMaterial({ color: "black" })
-);
-road.rotation.x = -Math.PI / 2;
-scene.add(road);
-
-//Load
-const loader = new GLTFLoader();
-let car;
-loader.load(
-  "models/car/scene.gltf",
-  (gltf) => {
-    car = gltf.scene;
-    car.scale.set(50, 50, 50);
-    car.position.set(0, 0, 0);
-    scene.add(car);
-  },
-  (xhr) => {
-    console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-  },
-  (error) => {
-    console.log("Error " + error);
-  }
-);
-
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-
-let carVelocity = new THREE.Vector3(0, 0, 0);
-let carSpeed = 0.2;
-let rotationAngle = 0;
-let keys = {};
-
-// Обработчики событий для управления
-window.addEventListener("keydown", (event) => {
-  keys[event.key] = true;
-});
-
-window.addEventListener("keyup", (event) => {
-  keys[event.key] = false;
-});
-
-function moveCar() {
-  if (!car) return;
-
-  // Вперёд
-  if (keys["ArrowUp"]) {
-    carVelocity.x = -Math.sin(rotationAngle) * carSpeed;
-    carVelocity.z = -Math.cos(rotationAngle) * carSpeed;
-  }
-  // Назад
-  else if (keys["ArrowDown"]) {
-    carVelocity.x = Math.sin(rotationAngle) * carSpeed;
-    carVelocity.z = Math.cos(rotationAngle) * carSpeed;
-  } else {
-    carVelocity.set(0, 0, 0);
-  }
-
-  // Повороты
-  if (keys["ArrowLeft"]) {
-    rotationAngle += 0.05;
-  }
-  if (keys["ArrowRight"]) {
-    rotationAngle -= 0.05;
-  }
-
-  // Применяем позицию и поворот
-  car.position.add(carVelocity);
-  car.rotation.y = rotationAngle;
-}
-
-//Points
-const infoPoints = [
-  {
-    position: new THREE.Vector3(5, 0, 0),
-    message: "Point 1 пройдет чек",
-  },
-  {
-    position: new THREE.Vector3(-5, 0, 0),
-    message: "Point 2 пройдет чек",
-  },
-  {
-    position: new THREE.Vector3(0, 0, 5),
-    message: "Point 3 пройдет чек",
-  },
-];
-
-function checkInfoPoints() {
-  infoPoints.forEach((point) => {
-    const distance = car.position.distanceTo(point.position);
-    if (distance < 0.5) {
-      showInfo(point.message);
+/**
+ * Base
+ */
+const parameters = {
+    color: 0xff0000,
+    spin: () =>
+    {
+        gsap.to(mesh.rotation, 1, { y: mesh.rotation.y + Math.PI * 2 })
     }
-  });
-}
-function showInfo(message) {
-  const infoBox = document.getElementById("info-block");
-  infoBox.innerText = message;
-  infoBox.style.display = "block";
 }
 
-infoPoints.forEach((point) => {
-  createInfoSphere(point.position);
-});
+// Canvas
+const canvas = document.querySelector('canvas.webgl')
 
-function createInfoSphere(position) {
-  const sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.2, 32, 32),
-    new THREE.MeshStandardMaterial({ color: "red" })
-  );
-  sphere.position.copy(position);
-  sphere.position.y = 2;
-  scene.add(sphere);
+// Scene
+const scene = new THREE.Scene()
+
+/**
+ * Object
+ */
+const geometry = new THREE.BoxGeometry(1, 1, 1)
+const material = new THREE.MeshBasicMaterial({ color: 0xff0000 })
+const mesh = new THREE.Mesh(geometry, material)
+scene.add(mesh)
+
+/**
+ * Sizes
+ */
+const sizes = {
+    width: window.innerWidth,
+    height: window.innerHeight
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  raycaster.setFromCamera(mouse, camera);
-  moveCar();
-  checkInfoPoints();
-  renderer.setClearColor("lightblue");
-  renderer.render(scene, camera);
+window.addEventListener('resize', () =>
+{
+    // Update sizes
+    sizes.width = window.innerWidth
+    sizes.height = window.innerHeight
+
+    // Update camera
+    camera.aspect = sizes.width / sizes.height
+    camera.updateProjectionMatrix()
+
+    // Update renderer
+    renderer.setSize(sizes.width, sizes.height)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+})
+
+/**
+ * Camera
+ */
+// Base camera
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+camera.position.z = 3
+scene.add(camera)
+
+// Controls
+const controls = new OrbitControls(camera, canvas)
+controls.enableDamping = true
+
+/**
+ * Renderer
+ */
+const renderer = new THREE.WebGLRenderer({
+    canvas: canvas
+})
+renderer.setSize(sizes.width, sizes.height)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+/**
+ * Debug
+ */
+const gui = new dat.GUI({
+    // closed: true,
+    width: 400
+})
+// gui.hide()
+gui.add(mesh.position, 'y').min(- 3).max(3).step(0.01).name('elevation')
+gui.add(mesh, 'visible')
+gui.add(material, 'wireframe')
+
+gui
+    .addColor(parameters, 'color')
+    .onChange(() =>
+    {
+        material.color.set(parameters.color)
+    })
+
+gui.add(parameters, 'spin')
+
+/**
+ * Animate
+ */
+const clock = new THREE.Clock()
+
+const tick = () =>
+{
+    const elapsedTime = clock.getElapsedTime()
+
+    // Update controls
+    controls.update()
+
+    // Render
+    renderer.render(scene, camera)
+
+    // Call tick again on the next frame
+    window.requestAnimationFrame(tick)
 }
 
-animate();
+tick()
