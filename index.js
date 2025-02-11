@@ -1,13 +1,16 @@
+import "./style.css";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as dat from "dat.gui";
 
 /**
+ * Debug
+ */
+const gui = new dat.GUI();
+
+/**
  * Base
  */
-// Debug
-const gui = new dat.GUI({ width: 300 });
-
 // Canvas
 const canvas = document.querySelector("canvas.webgl");
 
@@ -15,135 +18,68 @@ const canvas = document.querySelector("canvas.webgl");
 const scene = new THREE.Scene();
 
 /**
- * Galaxy
+ * Textures
  */
-const parameters = {};
-parameters.count = 100000;
-parameters.size = 0.01;
-parameters.radius = 5;
-parameters.branches = 3;
-parameters.spin = 1;
-parameters.randomness = 1;
-parameters.randomnessPower = 3;
-parameters.insideColor = "#ff6030";
-parameters.outsideColor = "#1b3984";
+const textureLoader = new THREE.TextureLoader();
+const cubeTextureLoader = new THREE.CubeTextureLoader();
 
-let geometry = null;
-let material = null;
-let points = null;
-const generateGalaxy = () => {
-  /**
-   * Delete old Galaxy
-   */
-  if (points !== null) {
-    geometry.dispose();
-    material.dispose();
-    scene.remove(points);
-  }
+const environmentMapTexture = cubeTextureLoader.load([
+  "/textures/environmentMaps/0/px.png",
+  "/textures/environmentMaps/0/nx.png",
+  "/textures/environmentMaps/0/py.png",
+  "/textures/environmentMaps/0/ny.png",
+  "/textures/environmentMaps/0/pz.png",
+  "/textures/environmentMaps/0/nz.png",
+]);
 
-  geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(parameters.count * 3);
-  const colors = new Float32Array(parameters.count * 3);
+/**
+ * Test sphere
+ */
+const sphere = new THREE.Mesh(
+  new THREE.SphereBufferGeometry(0.5, 32, 32),
+  new THREE.MeshStandardMaterial({
+    metalness: 0.3,
+    roughness: 0.4,
+    envMap: environmentMapTexture,
+  })
+);
+sphere.castShadow = true;
+sphere.position.y = 0.5;
+scene.add(sphere);
 
-  const colorInside = new THREE.Color(parameters.insideColor);
-  const colorOutside = new THREE.Color(parameters.outsideColor);
+/**
+ * Floor
+ */
+const floor = new THREE.Mesh(
+  new THREE.PlaneBufferGeometry(10, 10),
+  new THREE.MeshStandardMaterial({
+    color: "#777777",
+    metalness: 0.3,
+    roughness: 0.4,
+    envMap: environmentMapTexture,
+  })
+);
+floor.receiveShadow = true;
+floor.rotation.x = -Math.PI * 0.5;
+scene.add(floor);
 
-  for (let i = 0; i < parameters.count; i++) {
-    const i3 = i * 3;
-    //Position
-    const radius = Math.random() * parameters.radius;
-    const spinAngle = radius * parameters.spin;
-    const branchAngle =
-      ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
+/**
+ * Lights
+ */
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambientLight);
 
-    const randomX =
-      Math.pow(Math.random(), parameters.randomnessPower) *
-      (Math.random() < 0.5 ? 1 : -1);
-    const randomY =
-      Math.pow(Math.random(), parameters.randomnessPower) *
-      (Math.random() < 0.5 ? 1 : -1);
-    const randomZ =
-      Math.pow(Math.random(), parameters.randomnessPower) *
-      (Math.random() < 0.5 ? 1 : -1);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.2);
+directionalLight.castShadow = true;
+directionalLight.shadow.mapSize.set(1024, 1024);
+directionalLight.shadow.camera.far = 15;
+directionalLight.shadow.camera.left = -7;
+directionalLight.shadow.camera.top = 7;
+directionalLight.shadow.camera.right = 7;
+directionalLight.shadow.camera.bottom = -7;
+directionalLight.position.set(5, 5, 5);
+scene.add(directionalLight);
 
-    positions[i3 + 0] = Math.cos(branchAngle + spinAngle) * radius + randomX;
-    positions[i3 + 1] = randomY;
-    positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
-
-    //Color
-    const mixedColor = colorInside.clone();
-    mixedColor.lerp(colorOutside, radius / parameters.radius);
-
-    colors[i3 + 0] = mixedColor.r;
-    colors[i3 + 1] = mixedColor.g;
-    colors[i3 + 2] = mixedColor.b;
-  }
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-
-  /**
-   * Material
-   */
-  material = new THREE.PointsMaterial({
-    size: parameters.size,
-    sizeAttenuation: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    vertexColors: true,
-  });
-  /**
-   * Points
-   */
-  points = new THREE.Points(geometry, material);
-  scene.add(points);
-};
-
-generateGalaxy();
-
-gui
-  .add(parameters, "count")
-  .min(100)
-  .max(10000)
-  .step(100)
-  .onFinishChange(generateGalaxy);
-gui
-  .add(parameters, "size")
-  .min(0.001)
-  .max(0.1)
-  .step(0.001)
-  .onFinishChange(generateGalaxy);
-gui
-  .add(parameters, "radius")
-  .min(0.01)
-  .max(20)
-  .step(0.01)
-  .onFinishChange(generateGalaxy);
-gui
-  .add(parameters, "branches")
-  .min(2)
-  .max(20)
-  .step(1)
-  .onFinishChange(generateGalaxy);
-gui
-  .add(parameters, "spin")
-  .min(-5)
-  .max(5)
-  .step(0.01)
-  .onFinishChange(generateGalaxy);
-gui
-  .add(parameters, "randomness")
-  .min(0)
-  .max(2)
-  .step(0.01)
-  .onFinishChange(generateGalaxy);
-gui
-  .add(parameters, "randomnessPower")
-  .min(1)
-  .max(10)
-  .step(0.001)
-  .onFinishChange(generateGalaxy);
-gui.addColor(parameters, "insideColor").onFinishChange(generateGalaxy);
-gui.addColor(parameters, "outsideColor").onFinishChange(generateGalaxy);
 /**
  * Sizes
  */
@@ -176,9 +112,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   100
 );
-camera.position.x = 3;
-camera.position.y = 3;
-camera.position.z = 3;
+camera.position.set(-3, 3, 3);
 scene.add(camera);
 
 // Controls
@@ -191,6 +125,8 @@ controls.enableDamping = true;
 const renderer = new THREE.WebGLRenderer({
   canvas: canvas,
 });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
