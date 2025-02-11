@@ -1,8 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as dat from "dat.gui";
-import CANNON from "cannon";
-import { metalness } from "three/tsl";
+import * as CANNON from 'cannon-es';
 
 /**
  * Debug
