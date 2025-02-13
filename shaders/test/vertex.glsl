@@ -1,20 +1,22 @@
-uniform mat4 projectionMatrix;
-uniform mat4 modelMatrix;
-uniform mat4 viewMatrix;
+uniform vec2 uFraquency;
+uniform float uTime;
 
-attribute vec3 position;
-attribute float aRandom;
+varying vec2 vUv;
+varying float vElevation;
 
-varying float vRandom;
   
 void main() {
     vec4 modelPosition = modelMatrix * vec4(position, 1.0);
-    //modelPosition.z += sin(modelPosition.x * 20.0) * 0.1;
-    modelPosition.z += aRandom * 0.1;
+
+    float elevation = sin(modelPosition.x * uFraquency.x - uTime) * 0.1;
+    elevation += sin(modelPosition.y * uFraquency.y - uTime) * 0.1;
+    modelPosition.z += elevation;
+
     vec4 viewPosition = viewMatrix * modelPosition;
     vec4 projectionPosition = projectionMatrix * viewPosition;
 
     gl_Position = projectionPosition;
 
-    vRandom = aRandom;
+    vUv=uv;
+    vElevation = elevation;
 }
